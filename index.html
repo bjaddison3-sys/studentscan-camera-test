@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StudentScan Camera Test</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    main {
+      max-width: 480px;
+      margin: 24px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 16px;
+    }
+
+    h1 { margin: 0 0 8px; }
+    p { line-height: 1.5; }
+    button {
+      padding: 13px 16px;
+      border: 0;
+      border-radius: 9px;
+      background: #155e75;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:disabled { opacity: 0.5; cursor: wait; }
+    #reader { width: 100%; margin-top: 18px; }
+    #result { padding: 14px; border-radius: 10px; background: #e2e8f0; }
+    .success { background: #dcfce7 !important; }
+    .warning { background: #fee2e2 !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>StudentScan</h1>
+    <p>Camera test only. This page does not connect to Google Sheets or save student IDs.</p>
+    <button id="startButton" type="button">Start Camera</button>
+    <button id="stopButton" type="button" disabled>Stop Camera</button>
+    <div id="reader"></div>
+    <p id="result" role="status" aria-live="polite">Ready to scan a six-digit QR code.</p>
+  </main>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const startButton = document.getElementById('startButton');
+    const stopButton = document.getElementById('stopButton');
+    const result = document.getElementById('result');
+    let scanner = null;
+    let lastValue = '';
+    let lastScanTime = 0;
+
+    function showResult(message, kind = '') {
+      result.textContent = message;
+      result.className = kind;
+    }
+
+    async function startCamera() {
+      if (scanner) return;
+      if (!window.isSecureContext) {
+        showResult('Camera access requires HTTPS.', 'warning');
+        return;
+      }
+      if (typeof Html5Qrcode === 'undefined') {
+        showResult('Scanner library did not load. Check your internet connection.', 'warning');
+        return;
+      }
+
+      startButton.disabled = true;
+      showResult('Requesting camera access...');
+      try {
+        scanner = new Html5Qrcode('reader');
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            const value = decodedText.trim();
+            const now = Date.now();
+            if (value === lastValue && now - lastScanTime < 2500) return;
+            lastValue = value;
+            lastScanTime = now;
+
+            if (/^\d{6}$/.test(value)) {
+              showResult('QR read successfully. Student ID: ' + value, 'success');
+            } else {
+              showResult('QR code rejected: expected exactly six digits.', 'warning');
+            }
+          },
+          () => {}
+        );
+        stopButton.disabled = false;
+        showResult('Camera is running. Show a test QR code.');
+      } catch (error) {
+        scanner = null;
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        showResult('Camera could not start: ' + String(error), 'warning');
+      }
+    }
+
+    async function stopCamera() {
+      if (!scanner) return;
+      stopButton.disabled = true;
+      try {
+        await scanner.stop();
+        scanner.clear();
+        showResult('Camera stopped.');
+      } catch (error) {
+        showResult('Could not stop camera: ' + String(error), 'warning');
+      } finally {
+        scanner = null;
+        startButton.disabled = false;
+      }
+    }
+
+    startButton.addEventListener('click', startCamera);
+    stopButton.addEventListener('click', stopCamera);
+  </script>
+</body>
+</html>
