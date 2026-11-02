@@ -88,9 +88,18 @@
             lastValue = value;
             lastScanTime = now;
 
+            
             if (/^\d{6}$/.test(value)) {
-              showResult('QR read successfully. Student ID: ' + value, 'success');
-            } else {
+              showResult('Bracelet code scanned: ' + value, 'success');
+            
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                  type: 'STUDENTSCAN_BRACELET',
+                  braceletCode: value
+                }, '*');
+              }
+            }
+             else {
               showResult('QR code rejected: expected exactly six digits.', 'warning');
             }
           },
