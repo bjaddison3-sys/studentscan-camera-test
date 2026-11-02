@@ -124,5 +124,28 @@
     startButton.addEventListener('click', startCamera);
     stopButton.addEventListener('click', stopCamera);
   </script>
+
+<script>
+  function testStudentScanCommunication() {
+    const fictionalCode = '654321';
+
+    if (!window.opener) {
+      alert('Open this scanner from StudentScan to test communication.');
+      return;
+    }
+
+    window.opener.postMessage({
+      type: 'STUDENTSCAN_TEST',
+      braceletCode: fictionalCode
+    }, '*');
+
+    alert('Test message sent to StudentScan.');
+  }
+</script>
+
+<button type="button" onclick="testStudentScanCommunication()">
+  Test StudentScan Connection
+</button>
+
 </body>
 </html>
